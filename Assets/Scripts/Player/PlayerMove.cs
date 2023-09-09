@@ -1,36 +1,79 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerMove : MonoBehaviour
 {
+    [SerializeField] private Transform[] snapPosition;
     [SerializeField] private float speed = 5f;
     [SerializeField] private float jumpForce = 5f;
     [SerializeField] private float gravity = 9.8f;
+    private Animator animator;
+    private int snapIndex;
     private bool isGrounded = true;
+    Vector3 positionToMove;
     private Rigidbody rb;
+    private PlayerControls control;
     private void Awake()
     {
+        control = new();
+        control.Player.Enable();
+        control.Player.Move.started += ChangeDirection;
+        control.Player.Jump.started += Jump;
+
+        snapIndex = 1;
+        positionToMove = new Vector3(snapPosition[snapIndex].position.x, transform.position.y, transform.position.z);
+
         rb = GetComponent<Rigidbody>();
+        animator = GetComponent<Animator>();
         Physics.gravity = Vector3.down * gravity;
     }
 
-    // Update is called once per frame
+    private void OnDisable()
+    {
+        control.Player.Move.started -= ChangeDirection;
+        control.Player.Jump.started -= Jump;
+    }
+
+
     void Update()
     {
         Move();
-        Jump();
+        animator.SetBool("isGrounded", isGrounded);
+    }
+
+    private void ChangeDirection(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            float direction = control.Player.Move.ReadValue<float>();
+            if (direction == 1) snapIndex++;
+            else if (direction == -1) snapIndex--;
+
+            if (snapIndex >= 2) snapIndex = 2;
+            else if (snapIndex <= 0) snapIndex = 0;
+            positionToMove = new Vector3(snapPosition[snapIndex].position.x, transform.position.y, transform.position.z);
+        }
     }
 
     private void Move()
     {
-        float horizontal = Input.GetAxis("Horizontal");
-        rb.velocity = new Vector3(horizontal * speed, rb.velocity.y, 0);
+        if (Vector3.Distance(transform.position, positionToMove) > 0.1f)
+        {
+            // Vector3 direction = new Vector3(, 0, 0);
+            rb.velocity = new Vector3((positionToMove - transform.position).normalized.x * speed,
+                                        rb.velocity.y, rb.velocity.z);
+        }
+        else
+        {
+            rb.velocity = new Vector3(0, rb.velocity.y, rb.velocity.z);
+        }
     }
 
-    private void Jump()
+    private void Jump(InputAction.CallbackContext context)
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        if (context.started && isGrounded)
         {
             isGrounded = false;
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
@@ -42,6 +85,13 @@ public class PlayerMove : MonoBehaviour
         if (collision.gameObject.CompareTag("Ground"))
         {
             isGrounded = true;
+        }
+
+        if (collision.gameObject.CompareTag("Obstacle"))
+        {
+            animator.SetTrigger("hit");
+            Grounds.instance.speed = 0;
+            this.enabled = false;
         }
     }
 }
