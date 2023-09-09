@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 
 public class PlayerMove : MonoBehaviour
 {
+    public static PlayerMove instance;
     [SerializeField] private Transform[] snapPosition;
     [SerializeField] private float speed = 5f;
     [SerializeField] private float jumpForce = 5f;
@@ -15,8 +16,12 @@ public class PlayerMove : MonoBehaviour
     Vector3 positionToMove;
     private Rigidbody rb;
     private PlayerControls control;
+    private bool shield = false;
+    private bool reverse = false;
     private void Awake()
     {
+        instance = this;
+
         control = new();
         control.Player.Enable();
         control.Player.Move.started += ChangeDirection;
@@ -48,6 +53,8 @@ public class PlayerMove : MonoBehaviour
         if (context.started)
         {
             float direction = control.Player.Move.ReadValue<float>();
+            if (reverse) direction *= -1;
+
             if (direction == 1) snapIndex++;
             else if (direction == -1) snapIndex--;
 
@@ -61,7 +68,6 @@ public class PlayerMove : MonoBehaviour
     {
         if (Vector3.Distance(transform.position, positionToMove) > 0.1f)
         {
-            // Vector3 direction = new Vector3(, 0, 0);
             rb.velocity = new Vector3((positionToMove - transform.position).normalized.x * speed,
                                         rb.velocity.y, rb.velocity.z);
         }
@@ -80,6 +86,26 @@ public class PlayerMove : MonoBehaviour
         }
     }
 
+    #region Power Up
+    public void Shield()
+    {
+        shield = true;
+    }
+
+    public void Reverse()
+    {
+        StartCoroutine(ReversePowerUp());
+    }
+
+
+    private IEnumerator ReversePowerUp()
+    {
+        reverse = true;
+        yield return new WaitForSeconds(5f);
+        reverse = false;
+    }
+    #endregion
+
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Ground"))
@@ -87,8 +113,27 @@ public class PlayerMove : MonoBehaviour
             isGrounded = true;
         }
 
-        if (collision.gameObject.CompareTag("Obstacle"))
+
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("PickUp"))
         {
+            if (other.TryGetComponent<IPickUp>(out var pickUp))
+            {
+                pickUp.PickUp();
+            }
+        }
+
+        if (other.CompareTag("Obstacle"))
+        {
+            if (shield)
+            {
+                shield = false;
+                return;
+            }
+
             animator.SetTrigger("hit");
             Grounds.instance.speed = 0;
             this.enabled = false;

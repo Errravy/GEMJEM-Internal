@@ -18,7 +18,7 @@ public class MovingGround : MonoBehaviour
     private void BackToPosition()
     {
 
-        if (transform.position.z <= -20)
+        if (transform.position.z <= -32.9)
         {
             transform.position = Grounds.instance.frontGround.position + Vector3.forward * Grounds.instance.length;
             Grounds.instance.SetGround(transform);
