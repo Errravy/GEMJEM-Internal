@@ -116,16 +116,8 @@ public class PlayerMove : MonoBehaviour
 
     }
 
-    private void OnTriggerEnter(Collider other)
+    public void HitObstacle(Collider other)
     {
-        if (other.CompareTag("PickUp"))
-        {
-            if (other.TryGetComponent<IPickUp>(out var pickUp))
-            {
-                pickUp.PickUp();
-            }
-        }
-
         if (other.CompareTag("Obstacle"))
         {
             if (shield)
@@ -138,5 +130,18 @@ public class PlayerMove : MonoBehaviour
             Grounds.instance.speed = 0;
             this.enabled = false;
         }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("PickUp"))
+        {
+            if (other.TryGetComponent<IPickUp>(out var pickUp))
+            {
+                pickUp.PickUp();
+            }
+        }
+
+
     }
 }
